@@ -1,0 +1,34 @@
+:root {
+  --bg-dark: #0b0d19;
+  --bg-card: #131629;
+  --bg-card-hover: #1a1e38;
+  --accent-purple: #6c5ce7;
+  --accent-blue: #00cec9;
+  --text-main: #ffffff;
+  --text-muted: #8c92b0;
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-viewport {
+  flex: 1;
+  margin-left: 80px; 
+  padding: 24px;
+}
