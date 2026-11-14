@@ -1,33 +1,51 @@
 import { useState } from "react"
+import { supabase } from "../supabaseClient"
 import "../styles/AdminPanel.css"
 
-export default function AdminPanel({ trainings, setTrainings }) {
+export default function AdminPanel({ trainings, fetchTrainings }) {
   const [newTitle, setNewTitle] = useState("")
   const [newTrainer, setNewTrainer] = useState("")
 
-  const handleAddTraining = (e) => {
+  const handleAddTraining = async (e) => {
     e.preventDefault()
-    if (!newTitle || !newTrainer) return
+    if (!newTitle.trim() || !newTrainer.trim()) return
 
-    const newItem = {
-      id: Date.now(),
-      title: newTitle,
-      trainer: newTrainer,
-      time: "14:00 - 15:30",
-      day: "Ср, 22",
-      category: "Общая",
-      status: "OPEN",
-      availableSlots: 10,
-      maxSlots: 10,
+    try {
+      // Добавляем тренировку в таблицу trainings в Supabase
+      const { error } = await supabase.from('trainings').insert([{
+        title: newTitle.trim(),
+        trainer: newTrainer.trim(),
+        time: "14:00 - 15:30",
+        date: "Сегодня",
+        category: "Общая",
+        max_slots: 10,
+        available_slots: 10,
+      }])
+
+      if (error) throw error
+
+      setNewTitle("")
+      setNewTrainer("")
+      // Обновляем список тренировок из базы
+      if (fetchTrainings) fetchTrainings()
+    } catch (err) {
+      console.error("Ошибка при добавлении тренировки:", err.message)
+      alert("Не удалось добавить тренировку в базу данных.")
     }
-
-    setTrainings([...trainings, newItem])
-    setNewTitle("")
-    setNewTrainer("")
   }
 
-  const handleDelete = (id) => {
-    setTrainings(trainings.filter((item) => item.id !== id))
+  const handleDelete = async (id) => {
+    try {
+      // Удаляем тренировку из таблицы trainings по её id
+      const { error } = await supabase.from('trainings').delete().eq('id', id)
+      if (error) throw error
+
+      // Обновляем список тренировок из базы
+      if (fetchTrainings) fetchTrainings()
+    } catch (err) {
+      console.error("Ошибка при удалении тренировки:", err.message)
+      alert("Не удалось удалить тренировку из базы данных.")
+    }
   }
 
   return (
@@ -45,12 +63,14 @@ export default function AdminPanel({ trainings, setTrainings }) {
             placeholder="Название тренировки"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
+            required
           />
           <input
             type="text"
             placeholder="Имя тренера"
             value={newTrainer}
             onChange={(e) => setNewTrainer(e.target.value)}
+            required
           />
           <button type="submit" className="add-btn">Добавить</button>
         </div>
@@ -62,7 +82,7 @@ export default function AdminPanel({ trainings, setTrainings }) {
           <div key={item.id} className="admin-item">
             <div>
               <strong>{item.title}</strong>
-              <span className="admin-trainer"> — {item.trainer} ({item.day})</span>
+              <span className="admin-trainer"> — {item.trainer} ({item.date || item.time})</span>
             </div>
             <button onClick={() => handleDelete(item.id)} className="delete-btn">
               Удалить
