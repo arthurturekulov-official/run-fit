@@ -4,24 +4,20 @@ import { supabase } from "../supabaseClient"
 import "../styles/LoginScreen.css"
 
 export default function LoginScreen({ onLogin }) {
-  const [isRegisterMode, setIsRegisterMode] = useState(false) // false = Вход, true = Регистрация
+  const [isRegisterMode, setIsRegisterMode] = useState(false) 
   
-  // Поля формы
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
-  // Ошибки под конкретными полями
   const [fieldErrors, setFieldErrors] = useState({
     name: "",
     email: "",
     password: ""
   })
   
-  // Общая ошибка (ошибка сети или базы данных)
   const [generalError, setGeneralError] = useState("")
 
-  // Улучшенная валидация: проверяем длину с учетом .trim() (без учета пустых пробелов)
   const validateForm = () => {
     let isValid = true
     const errors = { name: "", email: "", password: "" }
@@ -68,11 +64,10 @@ export default function LoginScreen({ onLogin }) {
 
     const trimmedName = name.trim()
     const trimmedEmail = email.trim().toLowerCase()
-    const trimmedPassword = password.trim() // Убираем случайные пробелы по краям пароля
+    const trimmedPassword = password.trim() 
 
     try {
       if (isRegisterMode) {
-        // --- РЕГИСТРАЦИЯ ---
         const { data: existingUser, error: checkError } = await supabase
           .from('profiles')
           .select('*')
@@ -105,7 +100,6 @@ export default function LoginScreen({ onLogin }) {
         onLogin({ name: trimmedName, email: trimmedEmail, role })
 
       } else {
-        // --- ВХОД ---
         if (trimmedEmail === "admin@sportcenter.kz" && trimmedPassword === "admin123") {
           onLogin({ name: "Администратор", email: trimmedEmail, role: "admin" })
           return
@@ -156,7 +150,6 @@ export default function LoginScreen({ onLogin }) {
           <p>Система онлайн-записи и управления центром</p>
         </div>
 
-        {/* Переключатель режимов: Вход / Регистрация */}
         <div className="role-switcher">
           <button
             type="button"

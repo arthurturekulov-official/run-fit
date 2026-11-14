@@ -3,7 +3,6 @@ import { CheckCircle, AlertCircle, X } from "lucide-react"
 import "../styles/Toast.css"
 
 export default function Toast({ message, type = "success", onClose, actionText, onAction }) {
-  // Автоматически скрываем уведомление через 4 секунды
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose()
@@ -19,7 +18,6 @@ export default function Toast({ message, type = "success", onClose, actionText, 
         <span>{message}</span>
       </div>
 
-      {/* Опциональная интерактивная кнопка в тосте */}
       {actionText && (
         <button className="toast-action-btn" onClick={onAction}>
           {actionText}

@@ -1,6 +1,6 @@
 import "../styles/ScheduleBoard.css"
 
-export default function ScheduleBoard({ trainings, onBook }) {
+export default function ScheduleBoard({ trainings, onBook, onCancel, userBookings = [] }) {
   return (
     <div className="schedule-board">
       <div className="board-header">
@@ -9,28 +9,33 @@ export default function ScheduleBoard({ trainings, onBook }) {
       </div>
 
       <div className="cards-grid">
-        {trainings.map((item) => (
-          <div key={item.id} className="training-card">
-            <div className="card-top">
-              <span className="category-badge">{item.category}</span>
-              <span className="status-badge">
-                {item.availableSlots > 0 ? `Свободно: ${item.availableSlots}` : "Мест нет"}
-              </span>
+        {trainings.map((item) => {
+          const isBooked = userBookings.includes(item.id)
+          const isSoldOut = item.availableSlots === 0
+
+          return (
+            <div key={item.id} className="training-card">
+              <div className="card-top">
+                <span className="category-badge">{item.category}</span>
+                <span className="status-badge">
+                  {item.availableSlots > 0 ? `Свободно: ${item.availableSlots}` : "Мест нет"}
+                </span>
+              </div>
+
+              <h3>{item.title}</h3>
+              <p className="trainer-name">👨‍🏫 Тренер: {item.trainer}</p>
+              <p className="time-info">⏰ {item.date || "Сегодня"}, {item.time}</p>
+
+              <button
+                disabled={!isBooked && isSoldOut}
+                onClick={() => (isBooked ? onCancel(item.id) : onBook(item.id))}
+                className={`book-btn ${isBooked ? "cancel-btn" : isSoldOut ? "disabled" : ""}`}
+              >
+                {isBooked ? "Отменить запись" : isSoldOut ? "Мест нет" : "Записаться"}
+              </button>
             </div>
-
-            <h3>{item.title}</h3>
-            <p className="trainer-name">👨‍🏫 Тренер: {item.trainer}</p>
-            <p className="time-info">⏰ {item.day}, {item.time}</p>
-
-            <button
-              disabled={item.availableSlots === 0}
-              onClick={() => onBook(item.id)}
-              className={`book-btn ${item.availableSlots === 0 ? "disabled" : ""}`}
-            >
-              {item.availableSlots > 0 ? "Записаться" : "Мест нет"}
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

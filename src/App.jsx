@@ -7,7 +7,6 @@ import LoginScreen from "./components/LoginScreen"
 import Toast from "./components/Toast"
 
 export default function App() {
-  // Восстанавливаем сессию пользователя из localStorage при перезагрузке страницы
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("runfit_user")
     return savedUser ? JSON.parse(savedUser) : null
@@ -23,15 +22,14 @@ export default function App() {
   })
 
   const [trainings, setTrainings] = useState([])
+  const [userBookings, setUserBookings] = useState([]) 
   const [toast, setToast] = useState(null) 
 
-  // Функция загрузки тренировок из таблицы trainings в Supabase
   const fetchTrainings = async () => {
     try {
       const { data, error } = await supabase.from('trainings').select('*')
       if (error) throw error
 
-      // Приводим поля к удобному для интерфейса виду (snake_case -> camelCase)
       const formatted = (data || []).map(item => ({
         ...item,
         availableSlots: item.available_slots,
@@ -43,16 +41,31 @@ export default function App() {
     }
   }
 
-  // Загружаем тренировки при входе пользователя
+  const fetchUserBookings = async () => {
+    if (!user || user.role !== 'client') return
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('training_id')
+        .eq('user_email', user.email)
+
+      if (error) throw error
+
+      setUserBookings((data || []).map(b => b.training_id))
+    } catch (err) {
+      console.error("Ошибка загрузки бронирований:", err.message)
+    }
+  }
+
   useEffect(() => {
     if (user) {
       fetchTrainings()
+      fetchUserBookings()
     }
   }, [user])
 
   const handleLogin = (userData) => {
     setUser(userData)
-    // Сохраняем сессию в localStorage
     localStorage.setItem("runfit_user", JSON.stringify(userData))
     setActiveTab(userData.role === "admin" ? "admin" : "schedule")
     setToast({
@@ -63,6 +76,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null)
+    setUserBookings([])
     localStorage.removeItem("runfit_user")
     setToast({
       message: "Вы вышли из системы",
@@ -70,13 +84,11 @@ export default function App() {
     })
   }
 
-  // Обработчик бронирования с защитой от повторных записей и синхронизацией в Supabase
   const handleBook = async (id) => {
     const training = trainings.find(t => t.id === id)
     if (!training || training.availableSlots <= 0) return
 
     try {
-      // 1. Проверяем, записывался ли этот пользователь на данную тренировку ранее
       const { data: existingBooking, error: checkError } = await supabase
         .from('bookings')
         .select('*')
@@ -97,7 +109,6 @@ export default function App() {
       const originalSlots = training.availableSlots
       const newSlots = originalSlots - 1
 
-      // 2. Уменьшаем количество доступных мест в таблице trainings
       const { error: updateError } = await supabase
         .from('trainings')
         .update({ available_slots: newSlots })
@@ -105,7 +116,6 @@ export default function App() {
 
       if (updateError) throw updateError
 
-      // 3. Создаем запись в таблице bookings
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
         .insert([{ user_email: user.email, training_id: id }])
@@ -115,17 +125,15 @@ export default function App() {
 
       const createdBookingId = bookingData && bookingData[0] ? bookingData[0].id : null
 
-      // Мгновенное обновление локального стейта
       setTrainings(prev => prev.map(t => t.id === id ? { ...t, availableSlots: newSlots } : t))
+      setUserBookings(prev => [...prev, id]) 
 
-      // 4. Тост с кнопкой отмены
       setToast({
         message: `Вы успешно записаны на "${training.title}"!`,
         type: "success",
         actionText: "Отменить",
         onAction: async () => {
           try {
-            // Возвращаем места обратно в таблицу trainings
             const { error: restoreError } = await supabase
               .from('trainings')
               .update({ available_slots: originalSlots })
@@ -133,7 +141,6 @@ export default function App() {
 
             if (restoreError) throw restoreError
 
-            // Удаляем бронирование из таблицы bookings
             if (createdBookingId) {
               const { error: deleteError } = await supabase
                 .from('bookings')
@@ -144,6 +151,7 @@ export default function App() {
             }
 
             setTrainings(prev => prev.map(t => t.id === id ? { ...t, availableSlots: originalSlots } : t))
+            setUserBookings(prev => prev.filter(bId => bId !== id)) 
             setToast({ message: "Запись успешно отменена", type: "error" })
           } catch (cancelErr) {
             console.error("Ошибка отмены бронирования:", cancelErr.message)
@@ -157,7 +165,6 @@ export default function App() {
     }
   }
 
-  // Если пользователь не вошел, показываем экран входа/регистрации
   if (!user) {
     return (
       <>
@@ -165,6 +172,42 @@ export default function App() {
         {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       </>
     )
+  }
+
+  const handleCancelBooking = async (id) => {
+    const training = trainings.find(t => t.id === id)
+    if (!training) return
+
+    try {
+      const originalSlots = training.availableSlots
+      const newSlots = originalSlots + 1
+
+      const { error: updateError } = await supabase
+        .from('trainings')
+        .update({ available_slots: newSlots })
+        .eq('id', id)
+
+      if (updateError) throw updateError
+
+      const { error: deleteError } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('user_email', user.email)
+        .eq('training_id', id)
+
+      if (deleteError) throw deleteError
+
+      setTrainings(prev => prev.map(t => t.id === id ? { ...t, availableSlots: newSlots } : t))
+      setUserBookings(prev => prev.filter(bId => bId !== id))
+
+      setToast({
+        message: `Запись на "${training.title}" отменена`,
+        type: "info",
+      })
+    } catch (err) {
+      console.error("Ошибка отмены бронирования:", err.message)
+      setToast({ message: "Не удалось отменить запись", type: "error" })
+    }
   }
 
   return (
@@ -178,7 +221,12 @@ export default function App() {
 
       <main className="main-viewport">
         {user.role === "client" && activeTab === "schedule" && (
-          <ScheduleBoard trainings={trainings} onBook={handleBook} />
+          <ScheduleBoard 
+            trainings={trainings} 
+            onBook={handleBook} 
+            onCancel={handleCancelBooking} 
+            userBookings={userBookings}  
+          />
         )}
         {user.role === "admin" && activeTab === "admin" && (
           <AdminPanel trainings={trainings} fetchTrainings={fetchTrainings} />

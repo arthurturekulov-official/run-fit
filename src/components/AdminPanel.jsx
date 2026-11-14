@@ -11,7 +11,6 @@ export default function AdminPanel({ trainings, fetchTrainings }) {
     if (!newTitle.trim() || !newTrainer.trim()) return
 
     try {
-      // Добавляем тренировку в таблицу trainings в Supabase
       const { error } = await supabase.from('trainings').insert([{
         title: newTitle.trim(),
         trainer: newTrainer.trim(),
@@ -26,7 +25,7 @@ export default function AdminPanel({ trainings, fetchTrainings }) {
 
       setNewTitle("")
       setNewTrainer("")
-      // Обновляем список тренировок из базы
+
       if (fetchTrainings) fetchTrainings()
     } catch (err) {
       console.error("Ошибка при добавлении тренировки:", err.message)
@@ -36,11 +35,9 @@ export default function AdminPanel({ trainings, fetchTrainings }) {
 
   const handleDelete = async (id) => {
     try {
-      // Удаляем тренировку из таблицы trainings по её id
       const { error } = await supabase.from('trainings').delete().eq('id', id)
       if (error) throw error
 
-      // Обновляем список тренировок из базы
       if (fetchTrainings) fetchTrainings()
     } catch (err) {
       console.error("Ошибка при удалении тренировки:", err.message)

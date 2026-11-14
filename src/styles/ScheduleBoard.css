@@ -90,3 +90,25 @@
   color: #616685;
   cursor: not-allowed;
 }
+
+.book-btn.booked {
+  background-color: #2a2d43;
+  color: #616685;
+  cursor: not-allowed;
+}
+
+.book-btn.booked:hover {
+  background-color: #2a2d43; 
+}
+
+.book-btn.cancel-btn {
+  background-color: rgba(255, 77, 79, 0.15);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+  cursor: pointer;
+}
+
+.book-btn.cancel-btn:hover {
+  background-color: rgba(255, 77, 79, 0.25);
+  border-color: rgba(255, 77, 79, 0.5);
+}
