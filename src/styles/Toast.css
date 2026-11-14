@@ -1,0 +1,88 @@
+.toast-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background-color: var(--bg-card, #131629);
+  padding: 14px 18px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 380px;
+}
+
+/* Неоновая обводка для успеха (зеленый неон) */
+.toast-notification.success {
+  border: 1px solid rgba(0, 184, 148, 0.6);
+  box-shadow: 0 0 15px rgba(0, 184, 148, 0.15), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.toast-notification.success .toast-icon {
+  color: #00b894;
+}
+
+/* Неоновая обводка для ошибок (красный неон) */
+.toast-notification.error {
+  border: 1px solid rgba(255, 71, 87, 0.6);
+  box-shadow: 0 0 15px rgba(255, 71, 87, 0.15), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.toast-notification.error .toast-icon {
+  color: #ff4757;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Кнопка действия внутри тоста */
+.toast-action-btn {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.toast-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-muted, #8c92b0);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  transition: color 0.2s;
+}
+
+.toast-close:hover {
+  color: #fff;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
