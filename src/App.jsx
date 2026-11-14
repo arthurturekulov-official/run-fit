@@ -57,10 +57,31 @@ export default function App() {
     }
   }
 
+ // Загружаем тренировки, бронирования и настраиваем Realtime-подписку при входе
   useEffect(() => {
     if (user) {
       fetchTrainings()
-      fetchUserBookings()
+      if (user.role === 'client') {
+        fetchUserBookings()
+      }
+
+      // Подписываемся на любые изменения в таблице trainings в реальном времени
+      const trainingsChannel = supabase
+        .channel('public:trainings')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'trainings' },
+          (payload) => {
+            console.log('Изменение в расписании:', payload)
+            fetchTrainings() // Автоматически перезагружаем список при добавлении/удалении
+          }
+        )
+        .subscribe()
+
+      // Отписываемся при выходе пользователя из системы
+      return () => {
+        supabase.removeChannel(trainingsChannel)
+      }
     }
   }, [user])
 
