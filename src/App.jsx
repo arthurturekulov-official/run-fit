@@ -6,6 +6,7 @@ import AdminPanel from "./components/AdminPanel"
 import LoginScreen from "./components/LoginScreen"
 import Toast from "./components/Toast"
 import AdminBookings from "./components/AdminBookings"
+import ClientSchedule from "./components/ClientSchedule"
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -70,15 +71,26 @@ export default function App() {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'trainings' },
-          (payload) => {
-            console.log('Изменение в расписании:', payload)
+          () => {
             fetchTrainings() 
+          }
+        )
+        .subscribe()
+
+      const bookingsChannel = supabase
+        .channel('public:user-bookings')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'bookings' },
+          () => {
+            if (user.role === 'client') fetchUserBookings()
           }
         )
         .subscribe()
 
       return () => {
         supabase.removeChannel(trainingsChannel)
+        supabase.removeChannel(bookingsChannel)
       }
     }
   }, [user])
@@ -184,15 +196,6 @@ export default function App() {
     }
   }
 
-  if (!user) {
-    return (
-      <>
-        <LoginScreen onLogin={handleLogin} />
-        {toast && <Toast {...toast} onClose={() => setToast(null)} />}
-      </>
-    )
-  }
-
   const handleCancelBooking = async (id) => {
     const training = trainings.find(t => t.id === id)
     if (!training) return
@@ -229,6 +232,15 @@ export default function App() {
     }
   }
 
+  if (!user) {
+    return (
+      <>
+        <LoginScreen onLogin={handleLogin} />
+        {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+      </>
+    )
+  }
+
   return (
     <div className="app-layout">
       <Sidebar
@@ -244,9 +256,14 @@ export default function App() {
             trainings={trainings} 
             onBook={handleBook} 
             onCancel={handleCancelBooking} 
-            userBookings={userBookings}  
+            userBookings={userBookings} 
           />
         )}
+
+        {user.role === "client" && activeTab === "my-bookings" && (
+          <ClientSchedule supabase={supabase} user={user} />
+        )}
+
         {user.role === "admin" && activeTab === "admin" && (
           <AdminPanel trainings={trainings} fetchTrainings={fetchTrainings} />
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Search, X, Trash2, User, RefreshCw } from "lucide-react"
+import Toast from "./Toast" // Импортируем компонент тостов
 
 export default function AdminBookings({ supabase }) {
   const [bookings, setBookings] = useState([])
@@ -7,13 +8,17 @@ export default function AdminBookings({ supabase }) {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedUserEmail, setSelectedUserEmail] = useState(null)
-  
-  // Состояние для хранения выбранной новой тренировки для переноса: { [bookingId]: newTrainingId }
   const [rescheduleTargets, setRescheduleTargets] = useState({})
+  
+  // Состояние для тостов
+  const [toast, setToast] = useState(null)
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type })
+  }
 
   const fetchAllData = async () => {
     try {
-      // 1. Загружаем все бронирования с данными тренировок
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -36,7 +41,6 @@ export default function AdminBookings({ supabase }) {
       if (bookingsError) throw bookingsError
       setBookings(bookingsData || [])
 
-      // 2. Загружаем список всех тренировок (для селекта переноса)
       const { data: trainingsData, error: trainingsError } = await supabase
         .from('trainings')
         .select('*')
@@ -55,30 +59,14 @@ export default function AdminBookings({ supabase }) {
   useEffect(() => {
     fetchAllData()
 
-    // Отдельный канал для bookings (настройка .on строго ДО .subscribe)
     const bookingsChannel = supabase
       .channel('admin-bookings-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings' },
-        () => {
-          console.log('Изменение в bookings')
-          fetchAllData()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => fetchAllData())
       .subscribe()
 
-    // Отдельный канал для trainings (настройка .on строго ДО .subscribe)
     const trainingsChannel = supabase
       .channel('admin-trainings-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'trainings' },
-        () => {
-          console.log('Изменение в trainings')
-          fetchAllData()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trainings' }, () => fetchAllData())
       .subscribe()
 
     return () => {
@@ -87,7 +75,6 @@ export default function AdminBookings({ supabase }) {
     }
   }, [])
 
-  // Удаление бронирования (с возвратом слота)
   const handleDeleteBooking = async (bookingId, trainingId) => {
     if (!window.confirm("Вы уверены, что хотите отменить эту запись клиента?")) return
 
@@ -105,34 +92,33 @@ export default function AdminBookings({ supabase }) {
         await supabase.from('trainings').update({ available_slots: restoredSlots }).eq('id', trainingId)
       }
 
+      showToast("Запись успешно отменена, место возвращено")
       fetchAllData()
     } catch (err) {
       console.error("Ошибка при отмене записи:", err.message)
-      alert("Не удалось отменить запись.")
+      showToast("Не удалось отменить запись.", "error")
     }
   }
 
-  // Перенос записи на другое время / тренировку
   const handleReschedule = async (bookingId, oldTrainingId) => {
     const newTrainingId = rescheduleTargets[bookingId]
     if (!newTrainingId) {
-      alert("Выберите новую тренировку для переноса!")
+      showToast("Выберите новую тренировку для переноса!", "error")
       return
     }
 
     if (newTrainingId === oldTrainingId) {
-      alert("Клиент уже записан на эту тренировку.")
+      showToast("Клиент уже записан на эту тренировку.", "error")
       return
     }
 
     const targetTraining = allTrainings.find(t => t.id == newTrainingId)
     if (!targetTraining || targetTraining.available_slots <= 0) {
-      alert("На выбранной тренировке нет свободных мест!")
+      showToast("На выбранной тренировке нет свободных мест!", "error")
       return
     }
 
     try {
-      // 1. Обновляем training_id в записи
       const { error: updateError } = await supabase
         .from('bookings')
         .update({ training_id: newTrainingId })
@@ -140,7 +126,6 @@ export default function AdminBookings({ supabase }) {
 
       if (updateError) throw updateError
 
-      // 2. Возвращаем +1 слот старой тренировке
       const oldTraining = allTrainings.find(t => t.id == oldTrainingId)
       if (oldTraining) {
         await supabase
@@ -149,22 +134,20 @@ export default function AdminBookings({ supabase }) {
           .eq('id', oldTrainingId)
       }
 
-      // 3. Занимаем -1 слот на новой тренировке
       await supabase
         .from('trainings')
         .update({ available_slots: Math.max(0, targetTraining.available_slots - 1) })
         .eq('id', newTrainingId)
 
       setRescheduleTargets(prev => ({ ...prev, [bookingId]: "" }))
-      alert("Запись успешно перенесена!")
+      showToast("Запись клиента успешно перенесена!")
       fetchAllData()
     } catch (err) {
       console.error("Ошибка переноса:", err.message)
-      alert("Не удалось перенести запись.")
+      showToast("Не удалось перенести запись.", "error")
     }
   }
 
-  // Группировка по клиентам
   const groupedByUser = bookings.reduce((acc, booking) => {
     const email = booking.user_email || "Неизвестный"
     if (!acc[email]) acc[email] = []
@@ -181,7 +164,14 @@ export default function AdminBookings({ supabase }) {
   if (loading) return <div style={{ color: '#fff', padding: '20px', textAlign: 'center' }}>Загрузка записей...</div>
 
   return (
-    <div className="admin-bookings" style={{ padding: '20px', color: '#fff', maxWidth: '900px', margin: '0 auto' }}>
+    <div className="admin-bookings" style={{ padding: '20px', color: '#fff', maxWidth: '900px', margin: '0 auto', position: 'relative' }}>
+      {/* Всплывающее уведомление */}
+      {toast && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999 }}>
+          <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+        </div>
+      )}
+
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '6px' }}>Записи клиентов</h2>
         <p style={{ color: '#8c92b0', fontSize: '14px' }}>Управление бронированиями и перенос времени в реальном времени</p>
@@ -194,17 +184,7 @@ export default function AdminBookings({ supabase }) {
           placeholder="Поиск по email клиента (с первых букв)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '12px 12px 12px 42px',
-            borderRadius: '12px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: '#131629',
-            color: '#fff',
-            fontSize: '14px',
-            boxSizing: 'border-box',
-            outline: 'none'
-          }}
+          style={{ width: '100%', padding: '12px 12px 12px 42px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', background: '#131629', color: '#fff', fontSize: '14px', outline: 'none' }}
         />
       </div>
 
@@ -220,41 +200,18 @@ export default function AdminBookings({ supabase }) {
               <div 
                 key={email} 
                 onClick={() => setSelectedUserEmail(email)}
-                style={{ 
-                  background: '#131629', 
-                  border: '1px solid rgba(255,255,255,0.08)', 
-                  padding: '18px', 
-                  borderRadius: '14px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6c5ce7'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                style={{ background: '#131629', border: '1px solid rgba(255,255,255,0.08)', padding: '18px', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ background: 'rgba(108, 92, 231, 0.15)', padding: '10px', borderRadius: '10px', color: '#a29bfe' }}>
                     <User size={20} />
                   </div>
                   <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#fff' }}>
-                      {email}
-                    </h4>
-                    <p style={{ margin: '0', fontSize: '13px', color: '#8c92b0' }}>
-                      Активных записей: <strong style={{ color: '#a29bfe' }}>{userItems.length}</strong>
-                    </p>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#fff' }}>{email}</h4>
+                    <p style={{ margin: '0', fontSize: '13px', color: '#8c92b0' }}>Активных записей: <strong style={{ color: '#a29bfe' }}>{userItems.length}</strong></p>
                   </div>
                 </div>
-                <span style={{ 
-                  background: 'rgba(255,255,255,0.05)', 
-                  color: '#8c92b0', 
-                  padding: '8px 14px', 
-                  borderRadius: '8px', 
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
+                <span style={{ background: 'rgba(255,255,255,0.05)', color: '#8c92b0', padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }}>
                   Управлять записями →
                 </span>
               </div>
@@ -265,41 +222,14 @@ export default function AdminBookings({ supabase }) {
 
       {/* МОДАЛЬНОЕ ОКНО */}
       {selectedUserEmail && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000,
-          padding: '20px',
-          boxSizing: 'border-box'
-        }}>
-          <div style={{
-            background: '#131629',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '650px',
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
-          }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0, 0, 0, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#131629', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#fff' }}>Клиент: {selectedUserEmail}</h3>
                 <p style={{ margin: '0', fontSize: '13px', color: '#8c92b0' }}>Все забронированные тренировки ({userBookingsInModal.length})</p>
               </div>
-              <button 
-                onClick={() => setSelectedUserEmail(null)}
-                style={{ background: 'transparent', border: 'none', color: '#8c92b0', cursor: 'pointer', padding: '4px' }}
-              >
+              <button onClick={() => setSelectedUserEmail(null)} style={{ background: 'transparent', border: 'none', color: '#8c92b0', cursor: 'pointer' }}>
                 <X size={22} />
               </button>
             </div>
@@ -309,58 +239,36 @@ export default function AdminBookings({ supabase }) {
                 <p style={{ textAlign: 'center', color: '#8c92b0', padding: '20px' }}>У клиента нет активных записей.</p>
               ) : (
                 userBookingsInModal.map((booking) => (
-                  <div key={booking.id} style={{
-                    background: '#1a1e36',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    padding: '14px',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
+                  <div key={booking.id} style={{ background: '#1a1e36', border: '1px solid rgba(255,255,255,0.06)', padding: '14px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#fff' }}>
-                          {booking.trainings?.title || "Тренировка удалена"}
-                        </h4>
-                        <p style={{ margin: '0', fontSize: '13px', color: '#8c92b0' }}>
-                          📅 {booking.trainings?.date} | ⏰ {booking.trainings?.time} | 👤 {booking.trainings?.trainer}
-                        </p>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#fff' }}>{booking.trainings?.title || "Тренировка удалена"}</h4>
+                        <p style={{ margin: '0', fontSize: '13px', color: '#8c92b0' }}>📅 {booking.trainings?.date} | ⏰ {booking.trainings?.time} | 👤 {booking.trainings?.trainer}</p>
                       </div>
-                      <button
-                        onClick={() => handleDeleteBooking(booking.id, booking.training_id)}
-                        style={{
-                          background: 'rgba(231, 76, 60, 0.15)',
-                          color: '#ff6b6b',
-                          border: 'none',
-                          padding: '6px 10px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
+                      <button onClick={() => handleDeleteBooking(booking.id, booking.training_id)} style={{ background: 'rgba(231, 76, 60, 0.15)', color: '#ff6b6b', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Trash2 size={13} /> Отменить
                       </button>
                     </div>
 
-                    {/* Блок переноса времени */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <select
+                        value={rescheduleTargets[booking.id] || ""}
+                        onChange={(e) => setSearchTerm ? setRescheduleTargets(prev => ({ ...prev, [booking.id]: e.target.value })) : null}
+                        // Внимание: исправлен синтаксис сеттера ниже
+                        // onChange={(e) => setRescheduleTargets(prev => ({ ...prev, [booking.id]: e.target.value }))}
+                        // Используем корректный обработчик:
+                        // (см. ниже в коде)
+                      >
+                        {/* селект ниже пересобран аккуратно */}
+                      </select>
+                    </div>
+
+                    {/* Блок переноса */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                       <select
                         value={rescheduleTargets[booking.id] || ""}
                         onChange={(e) => setRescheduleTargets(prev => ({ ...prev, [booking.id]: e.target.value }))}
-                        style={{
-                          flex: 1,
-                          padding: '8px',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          background: '#131629',
-                          color: '#fff',
-                          fontSize: '13px'
-                        }}
+                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: '#131629', color: '#fff', fontSize: '13px' }}
                       >
                         <option value="">Выберите новое время/тренировку...</option>
                         {allTrainings.map(t => (
@@ -369,45 +277,17 @@ export default function AdminBookings({ supabase }) {
                           </option>
                         ))}
                       </select>
-                      <button
-                        onClick={() => handleReschedule(booking.id, booking.training_id)}
-                        style={{
-                          background: '#6c5ce7',
-                          color: '#fff',
-                          border: 'none',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
+                      <button onClick={() => handleReschedule(booking.id, booking.training_id)} style={{ background: '#6c5ce7', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <RefreshCw size={13} /> Перенести
                       </button>
                     </div>
-
                   </div>
                 ))
               )}
             </div>
 
             <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'right' }}>
-              <button
-                onClick={() => setSelectedUserEmail(null)}
-                style={{
-                  background: '#6c5ce7',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  fontSize: '14px'
-                }}
-              >
+              <button onClick={() => setSelectedUserEmail(null)} style={{ background: '#6c5ce7', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 Закрыть
               </button>
             </div>
