@@ -1,4 +1,4 @@
-import { Calendar, Users, LogOut } from "lucide-react"
+import { Calendar, Users, ClipboardList, LogOut } from "lucide-react"
 import "../styles/Sidebar.css"
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
@@ -20,13 +20,23 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
         )}
 
         {user?.role === "admin" && (
-          <button
-            className={`nav-item ${activeTab === "admin" ? "active" : ""}`}
-            onClick={() => setActiveTab("admin")}
-            title="Панель администратора"
-          >
-            <Users size={22} />
-          </button>
+          <>
+            <button
+              className={`nav-item ${activeTab === "admin" ? "active" : ""}`}
+              onClick={() => setActiveTab("admin")}
+              title="Управление тренировками"
+            >
+              <Users size={22} />
+            </button>
+
+            <button
+              className={`nav-item ${activeTab === "bookings" ? "active" : ""}`}
+              onClick={() => setActiveTab("bookings")}
+              title="Записи клиентов (Live)"
+            >
+              <ClipboardList size={22} />
+            </button>
+          </>
         )}
       </nav>
 

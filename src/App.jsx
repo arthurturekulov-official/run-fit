@@ -5,6 +5,7 @@ import ScheduleBoard from "./components/ScheduleBoard"
 import AdminPanel from "./components/AdminPanel"
 import LoginScreen from "./components/LoginScreen"
 import Toast from "./components/Toast"
+import AdminBookings from "./components/AdminBookings"
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -57,7 +58,6 @@ export default function App() {
     }
   }
 
- // Загружаем тренировки, бронирования и настраиваем Realtime-подписку при входе
   useEffect(() => {
     if (user) {
       fetchTrainings()
@@ -65,7 +65,6 @@ export default function App() {
         fetchUserBookings()
       }
 
-      // Подписываемся на любые изменения в таблице trainings в реальном времени
       const trainingsChannel = supabase
         .channel('public:trainings')
         .on(
@@ -73,12 +72,11 @@ export default function App() {
           { event: '*', schema: 'public', table: 'trainings' },
           (payload) => {
             console.log('Изменение в расписании:', payload)
-            fetchTrainings() // Автоматически перезагружаем список при добавлении/удалении
+            fetchTrainings() 
           }
         )
         .subscribe()
 
-      // Отписываемся при выходе пользователя из системы
       return () => {
         supabase.removeChannel(trainingsChannel)
       }
@@ -251,6 +249,10 @@ export default function App() {
         )}
         {user.role === "admin" && activeTab === "admin" && (
           <AdminPanel trainings={trainings} fetchTrainings={fetchTrainings} />
+        )}
+
+        {user.role === "admin" && activeTab === "bookings" && (
+          <AdminBookings supabase={supabase} />
         )}
       </main>
 
