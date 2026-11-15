@@ -64,7 +64,8 @@
   font-weight: 600;
 }
 
-.trainer-name, .time-info {
+.trainer-name,
+.time-info {
   font-size: 14px;
   color: var(--text-muted, #8c92b0);
 }
@@ -74,7 +75,7 @@
   background-color: var(--accent-purple, #6c5ce7);
   color: #fff;
   border: none;
-  padding: 10px;
+  padding: 11px;
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
@@ -85,12 +86,7 @@
   background-color: #5b4bc4;
 }
 
-.book-btn.disabled {
-  background-color: #2a2d43;
-  color: #616685;
-  cursor: not-allowed;
-}
-
+.book-btn.disabled,
 .book-btn.booked {
   background-color: #2a2d43;
   color: #616685;
@@ -98,7 +94,7 @@
 }
 
 .book-btn.booked:hover {
-  background-color: #2a2d43; 
+  background-color: #2a2d43;
 }
 
 .book-btn.cancel-btn {
@@ -111,4 +107,28 @@
 .book-btn.cancel-btn:hover {
   background-color: rgba(255, 77, 79, 0.25);
   border-color: rgba(255, 77, 79, 0.5);
+}
+
+@media (max-width: 768px) {
+  .schedule-board {
+    padding: 0;
+  }
+
+  .board-header h2 {
+    font-size: 20px;
+  }
+
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .training-card {
+    padding: 16px;
+  }
+
+  .book-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
 }

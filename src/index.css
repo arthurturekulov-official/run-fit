@@ -29,6 +29,19 @@ body {
 
 .main-viewport {
   flex: 1;
-  margin-left: 80px; 
+  margin-left: 80px;
   padding: 24px;
+  width: calc(100% - 80px);
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .main-viewport {
+    margin-left: 0;
+    width: 100%;
+    padding: 16px 14px 88px 14px;
+  }
 }

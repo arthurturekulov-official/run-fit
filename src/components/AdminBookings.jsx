@@ -278,15 +278,17 @@ export default function AdminBookings({ supabase }) {
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center', 
+                  flexWrap: 'wrap', // Предотвращает разъезжание элементов на узких экранах
+                  gap: '12px',      // Аккуратный отступ при переносе
                   cursor: 'pointer' 
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ background: 'rgba(108, 92, 231, 0.15)', padding: '10px', borderRadius: '10px', color: '#a29bfe' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', flex: '1' }}>
+                  <div style={{ background: 'rgba(108, 92, 231, 0.15)', padding: '10px', borderRadius: '10px', color: '#a29bfe', flexShrink: 0 }}>
                     <User size={20} />
                   </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <div style={{ wordBreak: 'break-all' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#fff' }}>{email}</h4>
                       {hasPendingRequest && (
                         <span style={{ background: 'rgba(241, 196, 15, 0.2)', color: '#f1c40f', fontSize: '11px', padding: '2px 8px', borderRadius: '6px', fontWeight: '600' }}>
@@ -297,7 +299,7 @@ export default function AdminBookings({ supabase }) {
                     <p style={{ margin: 0, fontSize: '13px', color: '#8c92b0' }}>Активных записей: <strong style={{ color: '#a29bfe' }}>{userItems.length}</strong></p>
                   </div>
                 </div>
-                <span style={{ background: 'rgba(255,255,255,0.05)', color: '#8c92b0', padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.05)', color: '#8c92b0', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', whiteSpace: 'nowrap' }}>
                   Управлять записями →
                 </span>
               </div>
@@ -308,14 +310,14 @@ export default function AdminBookings({ supabase }) {
 
       {/* МОДАЛЬНОЕ ОКНО */}
       {selectedUserEmail && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0, 0, 0, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#131629', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#fff' }}>Клиент: {selectedUserEmail}</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0, 0, 0, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '16px' }}>
+          <div style={{ background: '#131629', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <div style={{ overflow: 'hidden' }}>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#fff', wordBreak: 'break-all' }}>Клиент: {selectedUserEmail}</h3>
                 <p style={{ margin: 0, fontSize: '13px', color: '#8c92b0' }}>Все забронированные тренировки ({userBookingsInModal.length})</p>
               </div>
-              <button onClick={() => setSelectedUserEmail(null)} style={{ background: 'transparent', border: 'none', color: '#8c92b0', cursor: 'pointer' }}>
+              <button onClick={() => setSelectedUserEmail(null)} style={{ background: 'transparent', border: 'none', color: '#8c92b0', cursor: 'pointer', flexShrink: 0 }}>
                 <X size={22} />
               </button>
             </div>
@@ -323,12 +325,12 @@ export default function AdminBookings({ supabase }) {
             <div style={{ padding: '20px', overflowY: 'auto', display: 'grid', gap: '14px', flex: 1 }}>
               {userBookingsInModal.map((booking) => (
                 <div key={booking.id} style={{ background: '#1a1e36', border: '1px solid rgba(255,255,255,0.06)', padding: '14px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#fff' }}>{booking.trainings?.title || "Тренировка удалена"}</h4>
                       <p style={{ margin: 0, fontSize: '13px', color: '#8c92b0' }}>📅 {booking.trainings?.date} | ⏰ {booking.trainings?.time} | 👤 {booking.trainings?.trainer}</p>
                     </div>
-                    <button onClick={() => handleDeleteBooking(booking.id, booking.training_id)} style={{ background: 'rgba(231, 76, 60, 0.15)', color: '#ff6b6b', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button onClick={() => handleDeleteBooking(booking.id, booking.training_id)} style={{ background: 'rgba(231, 76, 60, 0.15)', color: '#ff6b6b', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                       <Trash2 size={13} /> Отменить
                     </button>
                   </div>
@@ -339,7 +341,7 @@ export default function AdminBookings({ supabase }) {
                       <div style={{ fontSize: '13px', color: '#f1c40f' }}>
                         🔔 Клиент просит перенести на: <strong>{booking.requested_training.title} ({booking.requested_training.date}, {booking.requested_training.time})</strong>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button
                           onClick={() => handleApproveReschedule(booking)}
                           style={{ background: '#00b894', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -357,11 +359,11 @@ export default function AdminBookings({ supabase }) {
                   )}
 
                   {/* Ручной перенос */}
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
                     <select
                       value={rescheduleTargets[booking.id] || ""}
                       onChange={(e) => setRescheduleTargets(prev => ({ ...prev, [booking.id]: e.target.value }))}
-                      style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: '#131629', color: '#fff', fontSize: '13px' }}
+                      style={{ flex: 1, minWidth: '180px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: '#131629', color: '#fff', fontSize: '13px', outline: 'none' }}
                     >
                       <option value="">Перенести вручную на...</option>
                       {allTrainings.map(t => (
@@ -370,7 +372,7 @@ export default function AdminBookings({ supabase }) {
                         </option>
                       ))}
                     </select>
-                    <button onClick={() => handleReschedule(booking.id, booking.training_id)} style={{ background: '#6c5ce7', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button onClick={() => handleReschedule(booking.id, booking.training_id)} style={{ background: '#6c5ce7', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                       <RefreshCw size={13} /> Перенести
                     </button>
                   </div>

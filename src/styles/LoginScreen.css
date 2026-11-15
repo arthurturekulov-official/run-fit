@@ -166,3 +166,19 @@
 .google-btn:hover {
   background-color: #f1f1f1;
 }
+
+@media (max-width: 480px) {
+  .login-wrapper {
+    padding: 14px;
+  }
+
+  .login-card {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .input-group input {
+    font-size: 16px;
+    padding: 12px;
+  }
+}
