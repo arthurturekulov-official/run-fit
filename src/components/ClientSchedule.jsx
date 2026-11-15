@@ -15,6 +15,7 @@ export default function ClientSchedule({ supabase, user }) {
 
   const fetchData = async () => {
     try {
+      // 1. Загружаем все тренировки
       const { data: trainingsData, error: tError } = await supabase
         .from('trainings')
         .select('*')
@@ -23,31 +24,55 @@ export default function ClientSchedule({ supabase, user }) {
       if (tError) throw tError
       setTrainings(trainingsData || [])
 
+      // 2. Загружаем записи текущего пользователя
       const { data: bookingsData, error: bError } = await supabase
         .from('bookings')
-        .select(`
-          id,
-          training_id,
-          user_email,
-          trainings (
-            id,
-            title,
-            date,
-            time,
-            trainer
-          )
-        `)
+        .select('*')
         .eq('user_email', user.email)
 
       if (bError) throw bError
-      setUserBookings(bookingsData || [])
+
+      // 3. Подтягиваем детальную информацию о тренировках вручную или через простой JOIN, 
+      // чтобы избежать ошибок синтаксиса псевдонимов в Supabase JS-клиенте
+      const enrichedBookings = await Promise.all(
+        (bookingsData || []).map(async (booking) => {
+          // Получаем основную тренировку
+          let trainingDetails = null
+          if (booking.training_id) {
+            const { data: tData } = await supabase
+              .from('trainings')
+              .select('*')
+              .eq('id', booking.training_id)
+              .maybeSingle()
+            trainingDetails = tData
+          }
+
+          // Получаем тренировку, на которую запрошен перенос (если есть)
+          let requestedDetails = null
+          if (booking.requested_training_id) {
+            const { data: reqData } = await supabase
+              .from('trainings')
+              .select('*')
+              .eq('id', booking.requested_training_id)
+              .maybeSingle()
+            requestedDetails = reqData
+          }
+
+          return {
+            ...booking,
+            trainings: trainingDetails,
+            requested_training: requestedDetails
+          }
+        })
+      )
+
+      setUserBookings(enrichedBookings)
     } catch (err) {
       console.error("Ошибка загрузки данных:", err.message)
     } finally {
       setLoading(false)
     }
   }
-
   useEffect(() => {
     if (!user?.email) return
     fetchData()
